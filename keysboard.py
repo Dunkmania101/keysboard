@@ -255,6 +255,6 @@ Requires python 3!
         else:
             print(usage_msg)
     else:
-        run_devices() 
+        print(usage_msg)
 else:
     run_devices()    
