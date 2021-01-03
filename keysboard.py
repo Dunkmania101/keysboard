@@ -61,6 +61,7 @@ def blank_layer():
 
 def blank_device():
     return {
+        exit_key_tag: exit_key_def,
         layers_tag: {
             first_layer_def: blank_layer()
         }
@@ -186,14 +187,16 @@ def run_device(device):
                                                         if print_actions:
                                                             print(f"[ {device} ]: Running in system shell: [ {action} ]")
                                                         try:
-                                                            os.popen(action)
+                                                            os.system(f"bash -c {action} & disown")
                                                         except:
-                                                            print(f"Device [ {device} ] hit an error while running [ {action} ], ignoring...")
+                                                            print(f"Device [ {device} ] hit an error while running shell command [ {action} ], ignoring...")
                                                     elif action_type == set_layer_action_tag:
                                                         if action in layers.keys():
                                                             if print_actions:
                                                                 print(f"[ {device} ]: Switching to layer: [ {action} ]")
                                                             current_layer = action
+                                                        else:
+                                                            print(f"Layer [ {action} ] is not in config for [ {device} ], ignoring...")
                                     else:
                                         current_layer = get_first_layer(device_config)
                         else:
@@ -223,8 +226,8 @@ Usage:
 
 Run normally: python keysboard.py
 Add device: python keysboard.py add-device device_name
-Add layer to device: python keysboard.py add-device device_name layer_name
-Add keybind to layer of device: python keysboard.py add-keybind device_name layer_name keycode action_type \"action\"
+Add layer to device: python keysboard.py add-device [ device_name ] [ layer_name ]
+Add keybind to layer of device: python keysboard.py add-keybind [ device_name ] [ layer_name] [ keycode ] [ action_type ] [ \"action\" ]
 
 Run with different config (must be at end of command!): python keysboard.py [command] [options] config=path/to/config.json
 
