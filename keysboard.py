@@ -16,7 +16,7 @@ print_key_codes = True # Whether to print the keycode of each key pressed on the
 print_actions = True # Whether to print info about each action.
 config_file = "./keysboard-conf.json"
 universal_exit_key = "KEY_ESC" # Just in case the one in the config doesn't work. Set to something that isn't a keycode to disable.
-indent_ammount = 4 # Ammount in spaces to indent saved Json.
+indent_amount = 4 # Amount in spaces to indent saved Json.
 
 # Defaults
 first_device_def = "the_ID_of_a_device" # Default device id to use in newly generated configs.
@@ -71,16 +71,16 @@ def blank_device():
 def blank_config():
     return {
         devices_tag: {
-            first_device_def: blank_device()  
+            first_device_def: blank_device()
         }
     }
 
 
 def open_config(overwrite):
     if not os.path.isfile(config_file):
+        f = open(config_file, "x")
         try:
-            f = open(config_file, "x")
-            json.dump(blank_config(), f, indent=indent_ammount)
+            json.dump(blank_config(), f, indent=indent_amount)
         finally:
             f.close()
     if overwrite:
@@ -91,14 +91,14 @@ def open_config(overwrite):
 def save_config(config):
     try:
         f = open_config(True)
-        json.dump(config, f, indent=indent_ammount)
+        json.dump(config, f, indent=indent_amount)
     finally:
         f.close()
 
 
 def read_config():
+    f = open_config(False)
     try:
-        f = open_config(False)
         try:
             read_conf = f.read()
             conf = json.loads(read_conf)
@@ -187,7 +187,7 @@ def run_device(device):
                                                         if print_actions:
                                                             print(f"[ {device} ]: Running in system shell: [ {action} ]")
                                                         try:
-                                                            os.system(f"bash -c {action} & disown")
+                                                            os.system(f"sh -c {action} & disown")
                                                         except:
                                                             print(f"Device [ {device} ] hit an error while running shell command [ {action} ], ignoring...")
                                                     elif action_type == set_layer_action_tag:
@@ -201,6 +201,8 @@ def run_device(device):
                                         current_layer = get_first_layer(device_config)
                         else:
                             break
+            except IOError:
+                print(f"Device [ {device} ] is already grabbed, skipping...")
             except:
                 print(error_msg)
             finally:
@@ -260,4 +262,4 @@ Requires python 3!
     else:
         print(usage_msg)
 else:
-    run_devices()    
+    run_devices()
