@@ -135,7 +135,7 @@ def read_config():
 def add_device(device):
     config = read_config()
 
-    if devices_tag not in config:
+    if devices_tag not in config.keys():
         config[devices_tag] = {}
         save_config(config)
 
@@ -148,7 +148,7 @@ def add_device(device):
 def add_layer(device, layer):
     config = add_device(device)
 
-    if layers_tag not in config[devices_tag][device]:
+    if layers_tag not in config[devices_tag][device].keys():
         config[devices_tag][device][layers_tag] = {}
         save_config(config)
 
@@ -161,7 +161,7 @@ def add_layer(device, layer):
 def add_keybind(device, layer, key, action_type, action):
     config = add_layer(device, layer)
 
-    if keybinds_tag not in config[devices_tag][device][layers_tag][layer]:
+    if keybinds_tag not in config[devices_tag][device][layers_tag][layer].keys():
         config[devices_tag][device][layers_tag][layer][keybinds_tag] = {}
         save_config(config)
 
