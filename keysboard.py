@@ -1,5 +1,5 @@
 #!python
-# keysboard for Linux by Dunkmania101
+# Keysboard for Linux by Dunkmania101
 
 
 import os, sys, subprocess, json
@@ -20,10 +20,11 @@ indent_amount = 4 # Amount in spaces to indent saved Json.
 shorten_name_amount = 15 # Amount in characters to shorten long names by for the log. Set to -1 to disable.
 
 # Defaults:
-first_device_def = "the_ID_of_a_device" # Default device id to use in newly generated configs.
+first_device_def = "the_path_to_a_device" # Default device path to use in newly generated configs.
+device_nickname_def = "NotARealDevice" # Default nickname given to new devices. Nicknames are used as friendly names when printing.
 exit_key_def = "KEY_ESC" # Default exit key in a newly added device.
 first_layer_def = "main" # Default name for the first layer in a newly added device.
-exit_cmd_def = "echo keysboard has exited!" # Default command for each newly generated layer to run on exit.
+exit_cmd_default = "echo Keysboard has exited!" # Default command for each newly generated layer to run on exit.
 ##########
 
 
@@ -42,6 +43,7 @@ exit_key_tag = "exit_key"
 # Other
 exit_cmd_tag = "exit_cmd"
 devices_tag = "devices"
+device_nickname_tag = "device_nickname"
 layers_tag = "layers"
 keybinds_tag = "keybinds"
 action_type_tag = "action_type"
@@ -90,7 +92,8 @@ def blank_layer():
 
 def blank_device():
     return {
-        exit_cmd_tag: exit_cmd_def,
+        device_nickname_tag: device_nickname_def,
+        exit_cmd_tag: exit_cmd_default,
         exit_key_tag: exit_key_def,
         layers_tag: {
             first_layer_def: blank_layer()
@@ -207,29 +210,32 @@ def run_device(device):
     device_short = device
     if shorten_name_amount != -1 and len(device_short) > shorten_name_amount:
         device_short = device_short[:shorten_name_amount] + "..."
+    dev_no_config_msg = f"Device [ {device_short} ] is not in the configuration, skipping..."
     invalid_dev_msg = f"Device [ {device_short} ] is invalid, skipping..."
     error_msg = f"Device [ {device_short} ] hit an error, stopping..."
     config = read_config()
-    devices = config[devices_tag]
+    devices = config.get(devices_tag, {})
     if device in devices.keys():
+        device_short = devices[device].get(device_nickname_tag, device_short)
         try:
-            dev = InputDevice("/dev/input/by-id/" + device)
+            dev = InputDevice(device)
             try:
                 dev.grab()
                 device_config = devices[device]
                 current_layer = get_first_layer(device_config)
                 for event in dev.read_loop():
                     if event.type == ecodes.EV_KEY:
-                        config = read_config()
-                        devices = config[devices_tag]
-                        if device in devices:
-                            device_config = devices[device]
-                            key = categorize(event)
-                            if key.keystate == key.key_down:
+                        key = categorize(event)
+                        if key.keystate == key.key_down:
+                            config = read_config()
+                            devices = config.get(devices_tag, {})
+                            if device in devices:
+                                device_config = devices[device]
+                                device_short = device_config.get(device_nickname_tag, device_short)
                                 code = key.keycode
                                 if print_key_codes:
                                     print(f"[ {device_short} ]: Pressed key: [ {code} ]")
-                                exit_key = device_config[exit_key_tag]
+                                exit_key = device_config.get(exit_key_tag, None)
                                 if code == exit_key or code == universal_exit_key:
                                     print(f"[ {device_short} ]: Exit key pressed! Quitting...")
                                     if exit_cmd_tag in device_config:
@@ -240,12 +246,12 @@ def run_device(device):
                                             print(f"Device [ {device_short} ] hit an error while running its exit command [ {exit_cmd} ], ignoring...")
                                     break
                                 else:
-                                    layers = device_config[layers_tag]
+                                    layers = device_config.get(layers_tag, {})
                                     if current_layer in layers:
-                                        keybinds = layers[current_layer][keybinds_tag]
+                                        keybinds = layers[current_layer].get(keybinds_tag, {})
                                         for key in keybinds.keys():
                                             bind = keybinds[key]
-                                            if code == key:
+                                            if (isinstance(code, list) and key in code) or (isinstance(code, str) and code == key):
                                                 if action_tag in bind.keys():
                                                     action = bind[action_tag]
                                                     action_type = ""
@@ -272,8 +278,9 @@ def run_device(device):
                                                             print(f"Layer [ {action} ] is not in config for [ {device_short} ], ignoring...")
                                     else:
                                         current_layer = get_first_layer(device_config)
-                        else:
-                            break
+                            else:
+                                print(dev_no_config_msg)
+                                break
             except IOError:
                 print(f"Device [ {device} ] is already grabbed, skipping...")
             except:
@@ -283,7 +290,7 @@ def run_device(device):
         except:
             print(invalid_dev_msg)
     else:
-        print(invalid_dev_msg)
+        print(dev_no_config_msg)
 
 
 def run_devices():
@@ -296,6 +303,7 @@ def run_devices():
 
 def main_run(args):
     if len(args) > 1:
+        invalid_cmdline_msg = "Invalid command line arguments!"
         usage_msg = """
 Usage:
 
@@ -311,6 +319,10 @@ Valid action values (respectively): any shell command, any layer of same device
 
 Requires python 3!
         """
+        def print_usage_msg(invalid_cmdline=False):
+            if invalid_cmdline:
+                print(invalid_cmdline_msg)
+            print(usage_msg)
         config_arg = "config="
         for arg in args:
             if arg.startswith(config_arg):
@@ -324,19 +336,19 @@ Requires python 3!
                 if len(args) >= 3:
                     add_device(args[2])
                 else:
-                    print(usage_msg)
+                    print_usage_msg(True)
             elif "add-layer" in args:
                 if len(args) >= 4:
                     add_layer(args[2], args[3])
                 else:
-                    print(usage_msg)
+                    print_usage_msg(True)
             elif "add-keybind" in args:
                 if len(args) >= 7:
                     add_keybind(args[2], args[3], args[4], args[5], args[6])
                 else:
-                    print(usage_msg)
+                    print_usage_msg(True)
             else:
-                print(usage_msg)
+                print_usage_msg(True)
         else:
             run_devices()
     else:
