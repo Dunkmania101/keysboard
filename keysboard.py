@@ -103,7 +103,7 @@ def exec_cmd(cmd, device="", current_layer="", print_output=True):
         print(gen_log_msg(device, current_layer, f"Command output: [ {output} ]"))
 
 def run_thread(target, args):
-    Thread(target=target, args=args, daemon=False).run()
+    Thread(target=target, args=args, daemon=False).start()
 
 
 def set_key(code, state=0, dev=uinput.UInput()):
